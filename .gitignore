@@ -1,0 +1,8 @@
+incubator-mxnet/
+model/
+rcnn/*.pyc
+rcnn/*/*.pyc
+rcnn/pycocotools/_mask.c
+rcnn/pycocotools/_mask.so
+data
+cache
