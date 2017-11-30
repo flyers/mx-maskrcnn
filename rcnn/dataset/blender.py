@@ -7,12 +7,11 @@ import os
 import numpy as np
 import cPickle
 import PIL.Image as Image
-import array
-import OpenEXR
-import Imath
 from imdb import IMDB
 from ..processing.bbox_transform import bbox_overlaps
 from ..config import dataset
+from ..io.image import read_seg
+
 
 class Blender(IMDB):
     def __init__(self, image_set, root_path, dataset_path):
@@ -25,9 +24,6 @@ class Blender(IMDB):
         TODO, add depth input 
         """
         super(Blender, self).__init__('blender', image_set, root_path, dataset_path)
-        self.image_set = image_set
-        self.root_path = root_path
-        self.data_path = dataset_path
 
         assets = [x for x in sorted(os.listdir(dataset.Blender.MODEL_DIR)) if x[0] == '0']
         # TODO, large_clamp and extra_large_clamp actually belongs to one class
@@ -85,13 +81,7 @@ class Blender(IMDB):
         seg_gt = ins_seg_path
         print seg_gt
         assert os.path.exists(seg_gt), 'Path does not exist: {}'.format(seg_gt)
-        exr_file = OpenEXR.InputFile(seg_gt)
-        dw = exr_file.header()['dataWindow']
-        sz = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
-        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-        pixel = array.array('f', exr_file.channel('R', FLOAT)).tolist()
-        pixel = np.array(pixel).reshape((sz[1], sz[0]))
-        print sz
+        pixel = read_seg(seg_gt)
         boxes = []
         gt_classes = []
         ins_id = []

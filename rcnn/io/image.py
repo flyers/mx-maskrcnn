@@ -3,6 +3,10 @@ import numpy.random as npr
 import cv2
 import os
 import random
+import OpenEXR
+import Imath
+import array
+from PIL.Image import Image
 from ..config import config
 import mxnet as mx
 
@@ -164,3 +168,25 @@ def tensor_vstack(tensor_list, pad=0):
         print tensor_list[0].shape
         raise Exception('Sorry, unimplemented.')
     return all_tensor
+
+
+def read_seg(seg_gt):
+    """
+    read the segmentation from a given image, supports OpenEXR format
+    :param seg: full segmentation image path
+    :return: a matrix with shape (height, width)
+    """
+    if seg_gt[-3::] == 'exr':
+        exr_file = OpenEXR.InputFile(seg_gt)
+        dw = exr_file.header()['dataWindow']
+        sz = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+        pixel = array.array('f', exr_file.channel('R', FLOAT)).tolist()
+        ins_seg = np.array(pixel).reshape((sz[1], sz[0]))
+    else:
+        im = Image.open(seg_gt)
+        pixel = list(im.getdata())
+        ins_seg = np.array(pixel).reshape((im.size[1], im.size[0]))
+    return ins_seg
+    
+    

@@ -37,13 +37,13 @@ def train_maskrcnn(network, dataset, image_set, root_path, dataset_path,
     # print config
     pprint.pprint(config)
 
-    roidb_file = root_path + '/cache/' + dataset + '_roidb_with_mask.pkl'
-    mean_file = root_path + '/cache/' + dataset + '_roidb_mean.pkl'
-    std_file = root_path + '/cache/' + dataset + '_roidb_std.pkl'
+    roidb_file = osp.join(root_path, 'cache', dataset + '_roidb_with_mask.pkl')
+    mean_file = osp.join(root_path, 'cache', dataset + '_roidb_mean.pkl')
+    std_file = osp.join(root_path, 'cache', dataset + '_roidb_std.pkl')
     if maskrcnn_stage is not None:
-        roidb_file = root_path + '/cache/' + dataset + '_roidb_with_mask_' + maskrcnn_stage + '.pkl'
-        mean_file = root_path + '/cache/' + dataset + '_roidb_mean_' + maskrcnn_stage + '.pkl'
-        std_file = root_path + '/cache/' + dataset + '_roidb_std_' + maskrcnn_stage + '.pkl'
+        roidb_file = osp.join(root_path, 'cache', dataset + '_roidb_with_mask_' + maskrcnn_stage + '.pkl')
+        mean_file = osp.join(root_path, 'cache', dataset + '_roidb_mean_' + maskrcnn_stage + '.pkl')
+        std_file = osp.join(root_path, 'cache', dataset + '_roidb_std_' + maskrcnn_stage + '.pkl')
 
     if osp.exists(roidb_file) and osp.exists(mean_file) and osp.exists(std_file):
         print 'Load ' + roidb_file
@@ -92,7 +92,6 @@ def train_maskrcnn(network, dataset, image_set, root_path, dataset_path,
     # load training data
     train_data = MaskROIIter(roidb, batch_size=input_batch_size, shuffle=not no_shuffle,
                              ctx=ctx, work_load_list=work_load_list, aspect_grouping=config.TRAIN.ASPECT_GROUPING)
-
     # infer max shape
     max_data_shape = [('data', (input_batch_size, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
     max_label_shape = []

@@ -2,10 +2,12 @@
 This file has functions about generating bounding box regression targets
 """
 from ..pycocotools.mask import encode
+from ..io.image import read_seg
 import numpy as np
-
+import os
+import cPickle
 from bbox_transform import bbox_overlaps, nonlinear_transform
-from rcnn.config import config
+from rcnn.config import config, dataset
 import math
 import cv2
 import PIL.Image as Image
@@ -102,21 +104,20 @@ def add_bbox_regression_targets(roidb):
     return means.ravel(), stds.ravel()
 
 
-
 def compute_mask_and_label(ex_rois, ex_labels, seg, flipped):
-    # assert os.path.exists(seg_gt), 'Path does not exist: {}'.format(seg_gt)
-    # im = Image.open(seg_gt)
-    # pixel = list(im.getdata())
-    # pixel = np.array(pixel).reshape([im.size[1], im.size[0]])
-    im = Image.open(seg)
-    pixel = list(im.getdata())
-    ins_seg = np.array(pixel).reshape([im.size[1], im.size[0]])
+    ins_seg = read_seg(seg)
+    if config.DATASET == 'Blender':
+        # merge bin index (1) with the floor index (0)
+        ins_seg[ins_seg == 1] = 0
+        with open(seg.replace('Image0030.exr', 'object_id.pickle')) as f:
+            object_ids = cPickle.load(f)
+        object_ids = [0, 0] + object_ids
     if flipped:
         ins_seg = ins_seg[:, ::-1]
     rois = ex_rois
     n_rois = ex_rois.shape[0]
     label = ex_labels
-    class_id = config.CLASS_ID
+    class_id = dataset[config.DATASET].CLASS_ID
     mask_target = np.zeros((n_rois, 28, 28), dtype=np.int8)
     mask_label = np.zeros((n_rois), dtype=np.int8)
     for n in range(n_rois):
@@ -125,7 +126,8 @@ def compute_mask_and_label(ex_rois, ex_labels, seg, flipped):
         ins_id = 0
         max_count = 0
         for id in ids:
-            if math.floor(id / 1000) == class_id[int(label[int(n)])]:
+            pixel_id = object_ids[int(id)] if config.DATASET == 'Blender' else math.floor(id / 1000)
+            if pixel_id == class_id[int(label[int(n)])]:
                 px = np.where(ins_seg == int(id))
                 x_min = np.min(px[1])
                 y_min = np.min(px[0])
@@ -137,7 +139,7 @@ def compute_mask_and_label(ex_rois, ex_labels, seg, flipped):
                 y2 = min(rois[n, 3], y_max)
                 iou = (x2 - x1) * (y2 - y1)
                 iou = iou / ((rois[n, 2] - rois[n, 0]) * (rois[n, 3] - rois[n, 1])
-                             + (x_max - x_min) * (y_max - y_min) - iou)
+                            + (x_max - x_min) * (y_max - y_min) - iou)
                 if iou > max_count:
                     ins_id = id
                     max_count = iou
@@ -192,9 +194,8 @@ def compute_bbox_mask_targets_and_label(rois, overlaps, labels, seg, flipped):
 
 def add_mask_targets(roidb):
     """
-    given roidb, add ['bbox_targets'] and normalize bounding box regression targets
+    given roidb, add ['mask_targets'], ['mask_labels'], ['mask_inds']
     :param roidb: roidb to be processed. must have gone through imdb.prepare_roidb
-    :return: means, std variances of targets
     """
     print 'add bounding box mask targets'
     assert len(roidb) > 0

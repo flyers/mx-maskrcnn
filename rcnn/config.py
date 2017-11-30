@@ -1,7 +1,11 @@
 import numpy as np
+import os
 from easydict import EasyDict as edict
 
 config = edict()
+
+# config.DATASET = 'Cityscape'
+config.DATASET = 'Blender'
 
 # network related params
 config.PIXEL_MEANS = np.array([103.939, 116.779, 123.68])
@@ -159,6 +163,24 @@ dataset.Cityscape.ANCHOR_SCALES = (8,)
 dataset.Cityscape.ANCHOR_RATIOS = (0.5, 1, 2)
 dataset.Cityscape.NUM_ANCHORS = len(dataset.Cityscape.ANCHOR_SCALES) * len(dataset.Cityscape.ANCHOR_RATIOS)
 dataset.Cityscape.CLASS_ID = [0, 24, 25, 26, 27, 28, 31, 32, 33]
+
+dataset.Blender = edict()
+dataset.Blender.MODEL_DIR = '/home/sliay/datasets/models'
+dataset.Blender.image_set = '01'
+dataset.Blender.test_image_set = '01'
+dataset.Blender.root_path = 'data'
+dataset.Blender.dataset_path = 'data/blender'
+dataset.Blender.SCALES = [(480, 640)]
+dataset.Blender.ANCHOR_SCALES = (8,)
+dataset.Blender.ANCHOR_RATIOS = (0.5, 1, 2)
+dataset.Blender.NUM_ANCHORS = len(dataset.Blender.ANCHOR_SCALES) * len(dataset.Blender.ANCHOR_RATIOS)
+
+assets = [x for x in sorted(os.listdir(dataset.Blender.MODEL_DIR)) if x[0] == '0']
+class_id = [int(x[0:3]) for x in assets]
+class_id = [0,] + class_id
+
+dataset.Blender.NUM_CLASSES = len(class_id)
+dataset.Blender.CLASS_ID = class_id
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
