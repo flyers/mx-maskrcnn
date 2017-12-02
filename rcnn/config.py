@@ -10,7 +10,6 @@ config.DATASET = 'Blender'
 # network related params
 config.PIXEL_MEANS = np.array([103.939, 116.779, 123.68])
 config.ROIALIGN = True
-
 config.RPN_FEAT_STRIDE = [64, 32, 16, 8, 4]
 config.RCNN_FEAT_STRIDE = [32, 16, 8, 4]
 
@@ -20,12 +19,9 @@ config.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'stage4',
                               'gamma', 'beta']
 
 # dataset related params
-config.NUM_CLASSES = 9
-config.SCALES = [(1024, 2048)]  # first is scale (the shorter side); second is max size
 config.ANCHOR_SCALES = (8,)
 config.ANCHOR_RATIOS = (0.5, 1, 2)
 config.NUM_ANCHORS = len(config.ANCHOR_SCALES) * len(config.ANCHOR_RATIOS)
-config.CLASS_ID = [0, 24, 25, 26, 27, 28, 31, 32, 33]
 
 config.TRAIN = edict()
 
@@ -115,7 +111,7 @@ default.dataset = 'Cityscape'
 default.image_set = 'train'
 default.test_image_set = 'val'
 default.root_path = 'data'
-default.dataset_path = 'data/cityscape'
+default.dataset_path = 'data/blender'
 # default training
 default.frequent = 20
 default.kvstore = 'device'
@@ -135,8 +131,6 @@ default.alternate_prefix = 'model/alternate'
 # network settings
 network = edict()
 
-network.vgg = edict()
-
 network.resnet_fpn = edict()
 network.resnet_fpn.pretrained = 'model/resnet-50'
 network.resnet_fpn.pretrained_epoch = 0
@@ -151,18 +145,6 @@ network.resnet_fpn.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3',
 
 # dataset settings
 dataset = edict()
-
-dataset.Cityscape = edict()
-dataset.Cityscape.image_set = 'train'
-dataset.Cityscape.test_image_set = 'val'
-dataset.Cityscape.root_path = 'data'
-dataset.Cityscape.dataset_path = 'data/cityscape'
-dataset.Cityscape.NUM_CLASSES = 9
-dataset.Cityscape.SCALES = [(1024, 2048)]
-dataset.Cityscape.ANCHOR_SCALES = (8,)
-dataset.Cityscape.ANCHOR_RATIOS = (0.5, 1, 2)
-dataset.Cityscape.NUM_ANCHORS = len(dataset.Cityscape.ANCHOR_SCALES) * len(dataset.Cityscape.ANCHOR_RATIOS)
-dataset.Cityscape.CLASS_ID = [0, 24, 25, 26, 27, 28, 31, 32, 33]
 
 dataset.Blender = edict()
 dataset.Blender.MODEL_DIR = '/home/sliay/datasets/models'
@@ -181,6 +163,10 @@ class_id = [0,] + class_id
 
 dataset.Blender.NUM_CLASSES = len(class_id)
 dataset.Blender.CLASS_ID = class_id
+dataset.Blender.CLASSES = [x[4::] for x in assets]
+
+config.NUM_CLASSES = dataset.Blender.NUM_CLASSES
+config.SCALES = dataset.Blender.SCALES
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
