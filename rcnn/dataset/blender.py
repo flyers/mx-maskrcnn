@@ -25,13 +25,9 @@ class Blender(IMDB):
         """
         super(Blender, self).__init__('blender', image_set, root_path, dataset_path)
 
-        assets = [x for x in sorted(os.listdir(dataset.Blender.MODEL_DIR)) if x[0] == '0']
-        # TODO, large_clamp and extra_large_clamp actually belongs to one class
-        self.classes = [x[4::] for x in assets]
-        self.classes = ['__background__',] + self.classes
-        self.class_id = [int(x[0:3]) for x in assets]
-        self.class_id = [0,] + self.class_id
-        self.num_classes = len(self.classes)
+        self.classes = dataset.Blender.CLASSES
+        self.class_id = dataset.Blender.CLASS_ID
+        self.num_classes = dataset.Blender.NUM_CLASSES
         self.image_set_index = self.load_image_set_index()
         self.num_images = len(self.image_set_index)
         print 'num_images', self.num_images

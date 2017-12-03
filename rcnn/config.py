@@ -158,12 +158,14 @@ dataset.Blender.ANCHOR_RATIOS = (0.5, 1, 2)
 dataset.Blender.NUM_ANCHORS = len(dataset.Blender.ANCHOR_SCALES) * len(dataset.Blender.ANCHOR_RATIOS)
 
 assets = [x for x in sorted(os.listdir(dataset.Blender.MODEL_DIR)) if x[0] == '0']
-class_id = [int(x[0:3]) for x in assets]
+# filter out 052_extra_large_clamp, which is actually the same as 051_large_clamp
+class_id = [int(x[0:3]) for x in assets if x[0:3] != '052']
 class_id = [0,] + class_id
 
 dataset.Blender.NUM_CLASSES = len(class_id)
 dataset.Blender.CLASS_ID = class_id
-dataset.Blender.CLASSES = [x[4::] for x in assets]
+dataset.Blender.CLASSES = ['__background__',] + [x[4::] for x in assets if x[0:3] != '052']
+
 
 config.NUM_CLASSES = dataset.Blender.NUM_CLASSES
 config.SCALES = dataset.Blender.SCALES
