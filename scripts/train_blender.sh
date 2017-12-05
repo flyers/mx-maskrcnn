@@ -2,10 +2,9 @@ export MXNET_CUDNN_AUTOTUNE_DEFAULT=0
 export PYTHONUNBUFFERED=1
 export MXNET_ENABLE_GPU_P2P=0
 
-TRAIN_DIR=model/res50-fpn/blender01/alternate/
+TRAIN_DIR=model/res50-fpn/blender_v1/alternate/
 DATASET=Blender
-SET=01
-TEST_SET=01
+SET=train_v1
 mkdir -p ${TRAIN_DIR}
 
 # Train

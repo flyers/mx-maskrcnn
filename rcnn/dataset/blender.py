@@ -4,6 +4,7 @@ Blender Rendering Database
 
 import cv2
 import os
+import random
 import numpy as np
 import cPickle
 import PIL.Image as Image
@@ -186,7 +187,53 @@ class Blender(IMDB):
         return roidb
 
     def evaluate_mask(self, results_pack):
-        raise NotImplementedError
+        for result_rec in results_pack['results_list']:
+            image_path = result_rec['image']
+            im_info = result_rec['im_info']
+            detections = result_rec['boxes']
+            seg_masks = result_rec['masks']
+
+            img = cv2.imread(image_path)
+            filename = os.path.split(image_path)[-1].replace('.png', '')
+
+            result_path = dataset.Blender.OUTPUT_DIR
+            if not os.path.exists(result_path):
+                os.makedirs(result_path)
+
+            print 'writing results for: ', filename
+            count = 0
+            f = open(os.path.join(result_path, filename + '.txt'), 'w')
+            mask_map = np.zeros((int(im_info[0, 0]), int(im_info[0, 1])))
+            for j, labelID in enumerate(self.class_id):
+                if labelID == 0:
+                    continue
+                dets = detections[j]
+                masks = seg_masks[j]
+                for i in range(len(dets)):
+                    bbox = dets[i, :4]
+                    score = dets[i, -1]
+                    bbox = map(int, bbox)
+                    mask_image = np.zeros((int(im_info[0, 0]), int(im_info[0, 1])))
+                    mask = masks[i, :, :]
+                    mask = cv2.resize(mask, (bbox[2] - bbox[0], (bbox[3] - bbox[1])), interpolation=cv2.INTER_LINEAR)
+                    mask[mask > 0.5] = j+1
+                    mask[mask <= 0.5] = 0
+                    mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2]] = mask
+                    # cv2.imwrite(os.path.join(result_path, filename) + '_' + str(count) + '.png', mask_image)
+                    f.write('{:s} {:s} {:.8f}\n'.format(filename + '_' + str(count) + '.png', str(labelID), score))
+                    count += 1
+                    mask_map += mask_image
+                    # show detection result
+                    color = [random.random(), random.random(), random.random()]
+                    color = [int(x * 255) for x in color]
+                    cv2.rectangle(img, tuple(bbox[0:2]), tuple(bbox[2:4]), color, 2)
+                    cv2.putText(img, '%s' % self.classes[j], (bbox[0], bbox[1]-10), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+            f.flush()
+            f.close()
+            # normalize mask map
+            mask_map /= (mask_map.max()/255.0)
+            cv2.imwrite(os.path.join(result_path, filename) + '_segm.png', mask_map)
+            cv2.imwrite(os.path.join(result_path, filename) + '_det.png', img)
 
     def evaluate_detections(self, detections):
         raise NotImplementedError

@@ -165,7 +165,7 @@ class_id = [0,] + class_id
 dataset.Blender.NUM_CLASSES = len(class_id)
 dataset.Blender.CLASS_ID = class_id
 dataset.Blender.CLASSES = ['__background__',] + [x[4::] for x in assets if x[0:3] != '052']
-
+dataset.Blender.OUTPUT_DIR = 'data/blender/results/pred/'
 
 config.NUM_CLASSES = dataset.Blender.NUM_CLASSES
 config.SCALES = dataset.Blender.SCALES
