@@ -156,7 +156,7 @@ def pred_eval_mask(predictor, test_data, imdb, roidb, result_path, vis=False, th
         roi_rec = roidb[i]
         t1 = time.time() - t
         t = time.time()
-
+        print(data_batch.data[0].shape)
         scores, boxes, data_dict, mask_output = im_detect_mask(predictor, data_batch, data_names)
 
         t2 = time.time() - t
@@ -193,7 +193,7 @@ def pred_eval_mask(predictor, test_data, imdb, roidb, result_path, vis=False, th
     results_pack = {'all_boxes': all_boxes,
                     'all_masks': all_masks,
                     'results_list': results_list}
-    imdb.evaluate_mask(results_pack)
+    imdb.evaluate_mask(results_pack, result_path)
 
 def pred_demo_mask(predictor, test_data, imdb, roidb, result_path, vis=False, thresh=1e-1):
     """
