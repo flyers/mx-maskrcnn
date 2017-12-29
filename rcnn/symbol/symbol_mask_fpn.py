@@ -500,7 +500,8 @@ def get_resnet_fpn_maskrcnn(num_classes=config.NUM_CLASSES):
     mask_deconv_act_list = []
     for stride in rcnn_feat_stride:
         if config.ROIALIGN:
-            roi_pool = mx.symbol.ROIAlign(
+            #roi_pool = mx.symbol.ROIAlign(
+            roi_pool = mx.symbol.contrib.ROIAlign_v1(
                 name='roi_pool', data=conv_fpn_feat['stride%s'%stride], rois=rois['rois_stride%s' % stride],
                 pooled_size=(14, 14),
                 spatial_scale=1.0 / stride)

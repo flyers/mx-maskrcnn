@@ -73,7 +73,8 @@ class FPNROIPoolOperator(mx.operator.CustomOp):
                     print 'index:', index.context
                 _rois = mx.nd.take(rois, index)
                 if config.ROIALIGN:
-                    roi_pool = mx.nd.ROIAlign(feat_dict['stride%s' % s], _rois, (self._pool_h, self._pool_w), 1.0 / float(s))
+                    #roi_pool = mx.nd.ROIAlign(feat_dict['stride%s' % s], _rois, (self._pool_h, self._pool_w), 1.0 / float(s))
+                    roi_pool = mx.nd.contrib.ROIAlign_v1(feat_dict['stride%s' % s], _rois, (self._pool_h, self._pool_w), 1.0 / float(s))
                 else:
                     roi_pool= mx.nd.ROIPooling(feat_dict['stride%s'%s], _rois, (self._pool_h, self._pool_w), 1.0 / float(s))
                 roi_pool_list.append(roi_pool)

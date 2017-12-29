@@ -3,6 +3,7 @@ import pprint
 import mxnet as mx
 import numpy as np
 import cv2
+import time
 
 from ..config import config, dataset
 from ..symbol import *
@@ -75,11 +76,14 @@ class MaskRCNN(object):
         """
         takes an opencv imread img and predicts the detection and segmentation result
         """
+        t1 = time.time()
         img_ori = img
         im_info = mx.nd.array([[self.im_shape[1], self.im_shape[2], 1]], ctx=self.ctx)
         img = np.transpose(img, (2, 0, 1))
         img = img[np.newaxis, (2, 1, 0)]
         img = mx.nd.array(img, ctx=self.ctx)
+        print('data preparing time {}'.format(time.time() - t1))
+        t1 = time.time()
         data_batch = mx.io.DataBatch(data=[img, im_info], label=None,
                                      provide_data=self.provide_data, provide_label=None)
         output = self.predictor.predict(data_batch)
@@ -87,6 +91,9 @@ class MaskRCNN(object):
         scores = output['cls_prob_reshape_output'].asnumpy()[0]
         bbox_deltas = output['bbox_pred_reshape_output'].asnumpy()[0]
         mask_output = output['mask_prob_output'].asnumpy()
+
+        print('network time {}'.format(time.time() - t1))
+        t1 = time.time()
 
         # post processing
         pred_boxes = nonlinear_pred(rois, bbox_deltas)
@@ -119,6 +126,9 @@ class MaskRCNN(object):
         masks_this_image = [[]] + [all_masks[cls_ind][0]
                                    for cls_ind in range(1, self.num_classes)]
 
+        print('post time {}'.format(time.time() - t1))
+        t1 = time.time()
+        #print('total time {}'.format(time.time() - t1))
         # visualize the result
         det_map, mask_map = self.visualize(img_ori, boxes_this_image, masks_this_image)
         cv2.imshow('a', det_map)
