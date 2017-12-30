@@ -5,7 +5,8 @@ from easydict import EasyDict as edict
 config = edict()
 
 # config.DATASET = 'Cityscape'
-config.DATASET = 'Blender'
+# config.DATASET = 'Blender'
+config.DATASET = 'Blender_b'
 
 # network related params
 config.PIXEL_MEANS = np.array([103.939, 116.779, 123.68])
@@ -169,6 +170,27 @@ dataset.Blender.OUTPUT_DIR = 'data/blender/results/pred/'
 
 config.NUM_CLASSES = dataset.Blender.NUM_CLASSES
 config.SCALES = dataset.Blender.SCALES
+
+dataset.Blender_b = edict()
+dataset.Blender_b.MODEL_DIR = '/home/sliay/datasets/models'
+dataset.Blender_b.root_path = 'data'
+dataset.Blender_b.dataset_path = 'data/blender_b'
+dataset.Blender_b.SCALES = [(480, 640)]
+dataset.Blender_b.ANCHOR_SCALES = (8,)
+dataset.Blender_b.ANCHOR_RATIOS = (0.5, 1, 2)
+dataset.Blender_b.NUM_ANCHORS = len(dataset.Blender_b.ANCHOR_SCALES) * len(dataset.Blender_b.ANCHOR_RATIOS)
+
+assets = [x for x in sorted(os.listdir(dataset.Blender_b.MODEL_DIR)) if x[0] == '0']
+# filter out 052_extra_large_clamp, which is actually the same as 051_large_clamp
+class_id = [int(x[0:3]) for x in assets if x[0:3] != '052']
+class_id = [0,] + class_id
+
+dataset.Blender_b.NUM_CLASSES = 2
+dataset.Blender_b.CLASS_ID = [0, 1]
+dataset.Blender_b.CLASSES = ['__background__', '__object__']
+
+config.NUM_CLASSES = dataset.Blender_b.NUM_CLASSES
+config.SCALES = dataset.Blender_b.SCALES
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():

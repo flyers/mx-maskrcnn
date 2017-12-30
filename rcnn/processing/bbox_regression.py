@@ -105,6 +105,9 @@ def add_bbox_regression_targets(roidb):
 
 
 def compute_mask_and_label(ex_rois, ex_labels, seg, flipped):
+    if config.DATASET == 'Blender_b':
+        return compute_mask_and_label_binary(ex_rois, ex_labels, seg, flipped)
+
     ins_seg = read_seg(seg)
     if config.DATASET == 'Blender':
         # merge bin index (1) with the floor index (0)
@@ -154,6 +157,60 @@ def compute_mask_and_label(ex_rois, ex_labels, seg, flipped):
 
         mask_target[n] = mask
         mask_label[n] = label[int(n)]
+    return mask_target, mask_label
+
+def compute_mask_and_label_binary(ex_rois, ex_labels, seg, flipped):
+    assert config.DATASET == 'Blender_b'
+    assert ex_labels.max() <= 1
+    ins_seg = read_seg(seg)
+    # merge bin index (1) with the floor index (0)
+    ins_seg[ins_seg == 1] = 0
+    with open(seg.replace('Image0030.exr', 'object_id.pickle')) as f:
+        object_ids = cPickle.load(f)
+    object_ids = [0, 0] + object_ids
+        
+    if flipped:
+        ins_seg = ins_seg[:, ::-1]
+    rois = ex_rois
+    n_rois = ex_rois.shape[0]
+    label = ex_labels
+    mask_target = np.zeros((n_rois, 28, 28), dtype=np.int8)
+    mask_label = np.zeros((n_rois), dtype=np.int8)
+    for n in range(n_rois):
+        target = ins_seg[int(rois[n, 1]): int(rois[n, 3]), int(rois[n, 0]): int(rois[n, 2])]
+        ids = np.unique(target)
+        ins_id = 0
+        max_count = 0
+        for id in ids:
+            pixel_id = object_ids[int(id)]
+            if pixel_id > 0: # means it's object
+                px = np.where(ins_seg == int(id))
+                x_min = np.min(px[1])
+                y_min = np.min(px[0])
+                x_max = np.max(px[1])
+                y_max = np.max(px[0])
+                x1 = max(rois[n, 0], x_min)
+                y1 = max(rois[n, 1], y_min)
+                x2 = min(rois[n, 2], x_max)
+                y2 = min(rois[n, 3], y_max)
+                iou = (x2 - x1) * (y2 - y1)
+                iou = iou / ((rois[n, 2] - rois[n, 0]) * (rois[n, 3] - rois[n, 1])
+                            + (x_max - x_min) * (y_max - y_min) - iou)
+                if iou > max_count:
+                    ins_id = id
+                    max_count = iou
+
+        if max_count == 0:
+            continue
+        # print max_count
+        mask = np.zeros(target.shape)
+        idx = np.where(target == ins_id)
+        mask[idx] = 1
+        mask = cv2.resize(mask, (28, 28), interpolation=cv2.INTER_NEAREST)
+
+        mask_target[n] = mask
+        mask_label[n] = label[int(n)]
+        assert mask_label[n] == 1
     return mask_target, mask_label
 
 
