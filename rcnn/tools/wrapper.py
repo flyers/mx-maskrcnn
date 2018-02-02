@@ -37,9 +37,15 @@ def check_params(data_shapes, sym, arg_params, aux_params):
 
 
 class MaskRCNN(object):
-    def __init__(self, network, prefix, epoch,
-                 ctx=mx.gpu(0), image_shape=(3, 480, 640)):
-        # print config
+    def __init__(self, network, prefix, epoch, datatype='Blender',
+                 thresh = 0.1, ctx=mx.gpu(0), image_shape=(3, 480, 640)):
+        """
+        network(str): 'resnet-fpn'
+        prefix(str): model prefix path
+        epoch(int): model epoch number
+        datatype(str): ['Blender', 'Blender_b'], multi-class vesus two-class
+        thresh(float): confidence threshold for filtering
+        """
         pprint.pprint(config)
         assert config.TEST.HAS_RPN
 
@@ -47,7 +53,7 @@ class MaskRCNN(object):
         self.ctx = ctx
         self.im_shape = image_shape
         self.sym = eval('get_' + network + '_mask_test')(
-            num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
+            num_classes=dataset[datatype].NUM_CLASSES, num_anchors=dataset[datatype].NUM_ANCHORS)
         self.provide_data = [("data", (1,) + image_shape), ("im_info", (1, 3))]
 
         # load model and check model parameters
@@ -68,13 +74,21 @@ class MaskRCNN(object):
         self.nms = py_nms_wrapper(config.TEST.NMS)
 
         # set dataset classes
-        self.classes = dataset.Blender.CLASSES
-        self.class_id = dataset.Blender.CLASS_ID
-        self.num_classes = dataset.Blender.NUM_CLASSES
+        self.classes = dataset[datatype].CLASSES
+        self.class_id = dataset[datatype].CLASS_ID
+        self.num_classes = dataset[datatype].NUM_CLASSES
+        self.thresh = thresh
 
-    def predict(self, img):
+    def predict(self, img, render=False):
         """
         takes an opencv imread img and predicts the detection and segmentation result
+        img(nparray): nparray read by cv2.imread
+        render(bool): whether to visualize the detection and segmentation result
+        returns:
+            all_boxes, all_masks
+            all_boxes = [box_class1, box_class2, ...], where box_class is a n by 5 ndarray, each row denotes [x1, y2, x2, y2, score]
+            all_masks = [mask_class1, mask_class2, ...], where mask_class is a n by 28 by 28 ndarray, each 28 by 28 mask corresponds to the above bounding box
+
         """
         t1 = time.time()
         img_ori = img
@@ -107,13 +121,12 @@ class MaskRCNN(object):
         label = np.argmax(scores, axis=1)
         label = label[:, np.newaxis]
 
-        thresh = 0.1
         for c in self.class_id:
             cls_ind = self.class_id.index(c)
             cls_boxes = pred_boxes[:, 4 * cls_ind:4 * (cls_ind + 1)]
             cls_masks = mask_output[:, cls_ind, :, :]
             cls_scores = scores[:, cls_ind, np.newaxis]
-            keep = np.where((cls_scores >= thresh) & (label == cls_ind))[0]
+            keep = np.where((cls_scores >= self.thresh) & (label == cls_ind))[0]
             cls_masks = cls_masks[keep, :, :]
             dets = np.hstack((cls_boxes, cls_scores)
                              ).astype('float32')[keep, :]
@@ -121,28 +134,25 @@ class MaskRCNN(object):
             all_boxes[cls_ind][0] = dets[keep, :]
             all_masks[cls_ind][0] = cls_masks[keep, :]
 
-        boxes_this_image = [[]] + [all_boxes[cls_ind][0]
-                                   for cls_ind in range(1, self.num_classes)]
-        masks_this_image = [[]] + [all_masks[cls_ind][0]
-                                   for cls_ind in range(1, self.num_classes)]
+        boxes_this_image = [all_boxes[cls_ind][0] for cls_ind in range(1, self.num_classes)]
+        masks_this_image = [all_masks[cls_ind][0] for cls_ind in range(1, self.num_classes)]
 
-        print('post time {}'.format(time.time() - t1))
         t1 = time.time()
-        #print('total time {}'.format(time.time() - t1))
         # visualize the result
-        det_map, mask_map = self.visualize(img_ori, boxes_this_image, masks_this_image)
-        cv2.imshow('a', det_map)
-        cv2.waitKey(0)
-        cv2.imshow('b', mask_map)
-        cv2.waitKey(0)
-        cv2.imwrite('det.png', det_map)
-        cv2.imwrite('seg.png', mask_map)
+        if render:
+            det_map, mask_map = self.visualize(img_ori, boxes_this_image, masks_this_image)
+            cv2.imshow('a', det_map)
+            cv2.waitKey(0)
+            cv2.imshow('b', mask_map)
+            cv2.waitKey(0)
+            cv2.imwrite('det.png', det_map)
+            cv2.imwrite('seg.png', mask_map)
+
+        return boxes_this_image, masks_this_image
 
     def visualize(self, img, detections, seg_masks):
         mask_map = np.zeros((self.im_shape[1], self.im_shape[2]))
-        for j, labelID in enumerate(self.class_id):
-            if labelID == 0:
-                continue
+        for j in range(len(detections)):
             dets = detections[j]
             masks = seg_masks[j]
             for i in range(len(dets)):
@@ -163,6 +173,6 @@ class MaskRCNN(object):
                 cv2.rectangle(img, tuple(bbox[0:2]),
                               tuple(bbox[2:4]), color, 2)
                 cv2.putText(img, str(
-                    j) + ' %s' % self.classes[j], (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+                    j+1) + ' %s' % self.classes[j+1], (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
         mask_map /= (mask_map.max()/255.0)
         return img, mask_map
