@@ -163,8 +163,9 @@ class MaskRCNN(object):
                 mask = masks[i, :, :]
                 mask = cv2.resize(
                     mask, (bbox[2] - bbox[0], (bbox[3] - bbox[1])), interpolation=cv2.INTER_LINEAR)
-                mask[mask > 0.5] = j + 1
-                mask[mask <= 0.5] = 0
+                threshold = 0.5
+                mask[mask > threshold] = j + 1
+                mask[mask <= threshold] = 0
                 mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2]] = mask
                 mask_map += mask_image
                 # show detection result
