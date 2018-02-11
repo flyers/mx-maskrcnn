@@ -182,6 +182,4 @@ class MaskRCNN(object):
                 mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2], :] = mask_color
                 mask_map += mask_image
         mask_map /= (mask_map.max()/1.0)
-        print mask_map.max()
-        print mask_map.min()
         return img, mask_map
