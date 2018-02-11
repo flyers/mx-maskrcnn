@@ -119,11 +119,12 @@ default.kvstore = 'device'
 # default rpn
 default.rpn_prefix = 'model/rpn'
 default.rpn_epoch = 8
+# default.rpn_epoch = 1
 default.rpn_lr = default.base_lr
 default.rpn_lr_step = '6'
 # default rcnn
 default.rcnn_prefix = 'model/rcnn'
-default.rcnn_epoch = 24
+default.rcnn_epoch = 10
 default.rcnn_lr = default.base_lr
 default.rcnn_lr_step = '20'
 # default alternate

@@ -151,7 +151,7 @@ class MaskRCNN(object):
         return boxes_this_image, masks_this_image
 
     def visualize(self, img, detections, seg_masks):
-        mask_map = np.zeros((self.im_shape[1], self.im_shape[2]))
+        mask_map = np.zeros((self.im_shape[1], self.im_shape[2], 3))
         for j in range(len(detections)):
             dets = detections[j]
             masks = seg_masks[j]
@@ -159,15 +159,15 @@ class MaskRCNN(object):
                 bbox = dets[i, :4]
                 score = dets[i, -1]
                 bbox = map(int, bbox)
-                mask_image = np.zeros((self.im_shape[1], self.im_shape[2]))
+                mask_image = np.zeros((self.im_shape[1], self.im_shape[2], 3))
                 mask = masks[i, :, :]
                 mask = cv2.resize(
                     mask, (bbox[2] - bbox[0], (bbox[3] - bbox[1])), interpolation=cv2.INTER_LINEAR)
                 threshold = 0.5
-                mask[mask > threshold] = j + 1
+                mask[mask > threshold] = 1
                 mask[mask <= threshold] = 0
-                mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2]] = mask
-                mask_map += mask_image
+                mask = np.tile(mask, [3, 1, 1])
+                mask = np.transpose(mask, (1, 2, 0))
                 # show detection result
                 color = [random.random(), random.random(), random.random()]
                 color = [int(x * 255) for x in color]
@@ -175,5 +175,13 @@ class MaskRCNN(object):
                               tuple(bbox[2:4]), color, 2)
                 cv2.putText(img, str(
                     j+1) + ' %s' % self.classes[j+1], (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
-        mask_map /= (mask_map.max()/255.0)
+                tmp = np.ones((bbox[3]-bbox[1], bbox[2]-bbox[0]))
+                mask_colors = [tmp * x / 255.0 for x in color]
+                mask_color = np.dstack(mask_colors)
+                mask_color = mask_color * mask
+                mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2], :] = mask_color
+                mask_map += mask_image
+        mask_map /= (mask_map.max()/1.0)
+        print mask_map.max()
+        print mask_map.min()
         return img, mask_map
