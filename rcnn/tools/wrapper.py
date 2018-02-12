@@ -85,8 +85,8 @@ class MaskRCNN(object):
         img(nparray): nparray read by cv2.imread
         render(bool): whether to visualize the detection and segmentation result
         returns:
-            all_boxes, all_masks
-            all_boxes = [box_class1, box_class2, ...], where box_class is a n by 5 ndarray, each row denotes [x1, y2, x2, y2, score]
+            all_boxes (list), all_masks (list)
+            all_boxes = [box_class1, box_class2, ...], where box_class is a n by 5 ndarray, each row denotes [x1, y2, x2, y2, score], and n is the number of detections associated with the class.
             all_masks = [mask_class1, mask_class2, ...], where mask_class is a n by 28 by 28 ndarray, each 28 by 28 mask corresponds to the above bounding box
 
         """
@@ -129,14 +129,25 @@ class MaskRCNN(object):
             keep = np.where((cls_scores >= self.thresh) & (label == cls_ind))[0]
             cls_masks = cls_masks[keep, :, :]
             dets = np.hstack((cls_boxes, cls_scores)
-                             ).astype('float32')[keep, :]
+                             ).astype('float32')[keep, :] 
+
             keep = self.nms(dets)
-            all_boxes[cls_ind][0] = dets[keep, :]
-            all_masks[cls_ind][0] = cls_masks[keep, :]
+            dets = dets[keep, :]
+            cls_masks = cls_masks[keep, :]
+            #print(keep)
+            keep_bg = self.filter_overlap_background(img_ori, dets, 0.75)
+            #print(keep_bg)
+            dets = dets[keep_bg, :]
+            cls_masks = cls_masks[keep_bg, :]                                     
+
+            all_boxes[cls_ind][0] = dets
+            all_masks[cls_ind][0] = cls_masks
+            #all_boxes[cls_ind][0] = dets[keep, :]
+            #all_masks[cls_ind][0] = cls_masks[keep, :]
 
         boxes_this_image = [all_boxes[cls_ind][0] for cls_ind in range(1, self.num_classes)]
         masks_this_image = [all_masks[cls_ind][0] for cls_ind in range(1, self.num_classes)]
-
+        #print boxes_this_image
         t1 = time.time()
         # visualize the result
         if render:
@@ -149,13 +160,29 @@ class MaskRCNN(object):
             cv2.imwrite('seg.png', mask_map)
 
         return boxes_this_image, masks_this_image
-
+    
+    def filter_overlap_background(self, img, bboxes, threshold):
+        # Get rid of boxes whose background ratio are bigger than the threshold
+        keep = []
+        for i in range(len(bboxes)):
+            box = bboxes[i]
+            # Magenta color.
+            indicator_bg = img[ box[1]:box[3], box[0]:box[2], :] == np.array([255,0,255])
+            indicator_bg = indicator_bg.sum(axis = 2)
+            ratio_pixels_bg = ((indicator_bg == 3).sum() + 0.0) / ((box[2] - box[0]) * (box[3] - box[1]))
+            #print ratio_pixels_bg
+            if ratio_pixels_bg < threshold:
+                keep.append(i)
+        return keep       
+ 
     def visualize(self, img, detections, seg_masks):
         mask_map = np.zeros((self.im_shape[1], self.im_shape[2], 3))
         for j in range(len(detections)):
             dets = detections[j]
             masks = seg_masks[j]
             for i in range(len(dets)):
+                color = [random.random(), random.random() ,random.random()]
+                color = [int(x * 255) for x in color]
                 bbox = dets[i, :4]
                 score = dets[i, -1]
                 bbox = map(int, bbox)
@@ -169,10 +196,8 @@ class MaskRCNN(object):
                 mask = np.tile(mask, [3, 1, 1])
                 mask = np.transpose(mask, (1, 2, 0))
                 # show detection result
-                color = [random.random(), random.random(), random.random()]
-                color = [int(x * 255) for x in color]
                 cv2.rectangle(img, tuple(bbox[0:2]),
-                              tuple(bbox[2:4]), color, 2)
+                              tuple(bbox[2:4]), color, 5)
                 cv2.putText(img, str(
                     j+1) + ' %s' % self.classes[j+1], (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
                 tmp = np.ones((bbox[3]-bbox[1], bbox[2]-bbox[0]))
@@ -182,4 +207,5 @@ class MaskRCNN(object):
                 mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2], :] = mask_color
                 mask_map += mask_image
         mask_map /= (mask_map.max()/1.0)
+
         return img, mask_map

@@ -18,8 +18,8 @@ wrapper = MaskRCNN(network='resnet_fpn',
 
 img_name = args.name
 
-img = cv2.imread(img_name)
-# img = cv2.imread('/home/sliay/datasets/realistic/s1/0016.png')
+# img = cv2.imread(img_name)
+img = cv2.imread('/home/sliay/datasets/realistic/s1/0016.png')
 #img = cv2.imread('/home/sliay/Downloads/data/single_object/image0005.jpg')
 # img = cv2.imread('/home/sliay/Downloads/data/multi_object/image0016.jpg')
 # img = cv2.imread('/home/sliay/Downloads/test/test0127.png')

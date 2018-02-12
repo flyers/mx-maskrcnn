@@ -25,7 +25,8 @@ class SegmentationServer:
     self.compute_lock = Lock()
     self.bridge = CvBridge()
     self.flag_compute = False
-    self.image_pub = rospy.Publisher("segmentation_img", Image)
+    self.image_pub_bbox = rospy.Publisher("det_img", Image)
+    self.image_pub_mask = rospy.Publisher("mask_img", Image)
     self.image_pub_echo = rospy.Publisher("prior_img", Image)
     self.flag_received_image = False
 
@@ -37,12 +38,12 @@ class SegmentationServer:
     self.image_lock.acquire()
     try:
       self.cv_rgb_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-      print("got new image")
+      #print("got new image")
       self.flag_received_image = True
     except CvBridgeError as e:
       print(e)
     finally:
-      print("done with new image")
+      #print("done with new image")
       self.image_lock.release()
 
     # Perform nn segmentation and publish the result.
@@ -60,12 +61,12 @@ class SegmentationServer:
 
   def do_segmentation(self):
     while not rospy.is_shutdown():
-      print("do work")
+      #print("do work")
       #self.image_lock.acquire()
-      print("locking")
+      #print("locking")
       
       if self.flag_received_image:
-        print "do real work"
+        #print "do real work"
         self.image_lock.acquire()
         try:
           self.proc_image = self.cv_rgb_image.copy()
@@ -75,8 +76,11 @@ class SegmentationServer:
           self.image_lock.release()    
           boxes, masks = self.rcnn_model.predict(self.proc_image, render=False)
           det_map, mask_map = self.rcnn_model.visualize(self.proc_image, boxes, masks) 
-          self.image_pub.publish(self.bridge.cv2_to_imgmsg(det_map, "bgr8"))  
-          print("release lock")
+          self.image_pub_bbox.publish(self.bridge.cv2_to_imgmsg(det_map, "bgr8"))  
+          self.image_pub_mask.publish(self.bridge.cv2_to_imgmsg(mask_map))
+          cv2.imwrite('det.png', det_map)
+          cv2.imwrite('seg.png', mask_map)
+          #print("release lock")
       print("done work")
 
   def start_segmentation(self):

@@ -81,7 +81,7 @@ config.TEST.HAS_RPN = True
 config.TEST.BATCH_IMAGES = 1
 
 # RPN proposal
-config.TEST.RPN_NMS_THRESH = 0.3
+config.TEST.RPN_NMS_THRESH = 0.5
 
 config.TEST.RPN_PRE_NMS_TOP_N = 6000
 config.TEST.RPN_POST_NMS_TOP_N = 1000
@@ -89,14 +89,14 @@ config.TEST.RPN_POST_NMS_TOP_N = 1000
 config.TEST.RPN_MIN_SIZE = config.RPN_FEAT_STRIDE
 
 # RPN generate proposal
-config.TEST.PROPOSAL_NMS_THRESH = 0.3
+config.TEST.PROPOSAL_NMS_THRESH = 0.5
 config.TEST.PROPOSAL_PRE_NMS_TOP_N = 20000
 config.TEST.PROPOSAL_POST_NMS_TOP_N = 2000
 
 config.TEST.PROPOSAL_MIN_SIZE = config.RPN_FEAT_STRIDE
 
 # RCNN nms
-config.TEST.NMS = 0.1 # The smaller the more pruning.
+config.TEST.NMS = 0.25 # The smaller the more pruning.
 
 
 # default settings
