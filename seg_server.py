@@ -4,6 +4,7 @@ import mxnet as mx
 import argparse
 import threading
 import time
+import numpy as np
 from rcnn.tools.wrapper import MaskRCNN
 from sensor_msgs.msg import Image
 from threading import Lock
@@ -29,6 +30,54 @@ class SegmentationServer:
     self.image_pub_mask = rospy.Publisher("mask_img", Image)
     self.image_pub_echo = rospy.Publisher("prior_img", Image)
     self.flag_received_image = False
+    self.has_static_bg = False
+  
+  def construct_static_background(self, num_images = 30, threshold = 40):
+    print "start bg construction"
+    self.fgbg = cv2.createBackgroundSubtractorMOG2(history=num_images, varThreshold=threshold, detectShadows=False)    
+    count = 0
+    while (count < num_images):
+      image = self.copy_current_image()
+      self.fgbg.apply(image)
+      count = count + 1
+      print count
+    self.has_static_bg = True
+
+  def construct_static_background_plain(self, num_images = 50, threshold = 40):
+    count = 0
+    image = self.copy_current_image()
+    self.avg_bg_img = np.zeros(image.shape)
+    self.bg_threshold = threshold
+    while (count < num_images):
+      image = self.copy_current_image()
+      self.avg_bg_img = self.avg_bg_img + image
+      count = count + 1
+    self.avg_bg_img /= count
+    self.has_static_bg = True
+
+  def do_background_subtraction_plain(self):
+    if self.has_static_bg:
+      image = self.copy_current_image()
+      img_diff = image - self.avg_bg_img
+      img_diff = img_diff.max(axis = 2)
+      ret, fg_mask = cv2.threshold(img_diff, self.bg_threshold, 255, cv2.THRESH_BINARY)
+      print fg_mask.shape
+      image[fg_mask == 0, 0] = 255
+      image[fg_mask == 0, 1] = 0
+      image[fg_mask == 0, 2] = 255
+    return image
+
+  def do_background_subtraction(self):
+    if self.has_static_bg:
+      image = self.copy_current_image()
+      fg_mask = self.fgbg.apply(image, learningRate=0.0)
+      image[fg_mask == 0, 0] = 255
+      image[fg_mask == 0, 1] = 0
+      image[fg_mask == 0, 2] = 255       
+      #kernel = np.ones((5,5), np.uint8)
+      #image = cv2.erode(image, kernel, iterations=2)   
+      #image = cv2.fastNlMeansDenoisingColored(image,None,10,10,7,21)
+    return image
 
   def subscribe_image_topic(self, topic_name):
   	self.rgb_sub = rospy.Subscriber(topic_name, Image, 
@@ -67,21 +116,36 @@ class SegmentationServer:
       
       if self.flag_received_image:
         #print "do real work"
-        self.image_lock.acquire()
-        try:
-          self.proc_image = self.cv_rgb_image.copy()
-        except:
-          print("error making a copy for nn prediction")
-        finally:
-          self.image_lock.release()    
-          boxes, masks = self.rcnn_model.predict(self.proc_image, render=False)
-          det_map, mask_map = self.rcnn_model.visualize(self.proc_image, boxes, masks) 
+        # self.image_lock.acquire()
+        # try:
+        #   self.proc_image = self.cv_rgb_image.copy()
+        # except:
+        #   print("error making a copy for nn prediction")
+        # finally:
+        #   self.image_lock.release()
+          #image = self.do_background_subtraction()
+          image = self.do_background_subtraction_plain()
+          #cv2.imshow('bgs', image)
+          #cv2.waitKey(0)    
+          boxes, masks = self.rcnn_model.predict(image, render=False)
+          det_map, mask_map = self.rcnn_model.visualize(image, boxes, masks) 
           self.image_pub_bbox.publish(self.bridge.cv2_to_imgmsg(det_map, "bgr8"))  
-          self.image_pub_mask.publish(self.bridge.cv2_to_imgmsg(mask_map))
+          self.image_pub_mask.publish(self.bridge.cv2_to_imgmsg(mask_map, 'bgr8'))
           cv2.imwrite('det.png', det_map)
           cv2.imwrite('seg.png', mask_map)
           #print("release lock")
       print("done work")
+  
+  def copy_current_image(self):
+    self.image_lock.acquire()
+    print "copying image"
+    try:
+      cp_image = self.cv_rgb_image.copy()
+    except:
+      print("error making a copy")
+    finally:
+      self.image_lock.release()
+    return cp_image
 
   def start_segmentation(self):
     if seg_server.flag_received_image:
@@ -100,6 +164,7 @@ if __name__ == '__main__':
   seg_server = SegmentationServer(nn_model_file = args.model)  
   seg_server.subscribe_image_topic(topic_name = args.topic)
   time.sleep(2)
-  
+  #seg_server.construct_static_background(num_images=1000, threshold=16)
+  seg_server.construct_static_background_plain(num_images=1000, threshold=40)
   seg_server.start_segmentation()
   rospy.spin()

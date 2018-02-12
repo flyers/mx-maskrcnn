@@ -129,16 +129,16 @@ class MaskRCNN(object):
             keep = np.where((cls_scores >= self.thresh) & (label == cls_ind))[0]
             cls_masks = cls_masks[keep, :, :]
             dets = np.hstack((cls_boxes, cls_scores)
-                             ).astype('float32')[keep, :] 
+                             ).astype('float32')[keep, :]
 
             keep = self.nms(dets)
             dets = dets[keep, :]
             cls_masks = cls_masks[keep, :]
             #print(keep)
-            keep_bg = self.filter_overlap_background(img_ori, dets, 0.75)
+            keep_bg = self.filter_overlap_background(img_ori, dets, 0.5)
             #print(keep_bg)
             dets = dets[keep_bg, :]
-            cls_masks = cls_masks[keep_bg, :]                                     
+            cls_masks = cls_masks[keep_bg, :]
 
             all_boxes[cls_ind][0] = dets
             all_masks[cls_ind][0] = cls_masks
@@ -160,7 +160,7 @@ class MaskRCNN(object):
             cv2.imwrite('seg.png', mask_map)
 
         return boxes_this_image, masks_this_image
-    
+
     def filter_overlap_background(self, img, bboxes, threshold):
         # Get rid of boxes whose background ratio are bigger than the threshold
         keep = []
@@ -173,8 +173,8 @@ class MaskRCNN(object):
             #print ratio_pixels_bg
             if ratio_pixels_bg < threshold:
                 keep.append(i)
-        return keep       
- 
+        return keep
+
     def visualize(self, img, detections, seg_masks):
         mask_map = np.zeros((self.im_shape[1], self.im_shape[2], 3))
         for j in range(len(detections)):
@@ -207,5 +207,6 @@ class MaskRCNN(object):
                 mask_image[bbox[1]: bbox[3], bbox[0]: bbox[2], :] = mask_color
                 mask_map += mask_image
         mask_map /= (mask_map.max()/1.0)
-
+        mask_map *= 255
+        mask_map = mask_map.astype(np.uint8)
         return img, mask_map
